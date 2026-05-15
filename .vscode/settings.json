@@ -1,0 +1,12 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "${workspaceFolder:ESTOQUE_SJ_DISC}/estoque.db",
+            "name": "SQLITE_ESTOQUE_SJ"
+        }
+    ],
+    "sqltools.useNodeRuntime": true,
+    "python.analysis.extraPaths": ["./DB"]
+}
