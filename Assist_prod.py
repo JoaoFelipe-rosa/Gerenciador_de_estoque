@@ -1,11 +1,11 @@
 import json
 
 import streamlit as st
-import sqlite3
-import os
 import pandas as pd
 from datetime import datetime
 from dbManager import InventorySystem
+import cv2
+from pyzbar import pyzbar
 
 # ---------------------------------------------------------------------------
 # BANCO DE DADOS
@@ -213,7 +213,46 @@ def edição_de_itens():
                     except Exception as e:
                         st.error(f"Erro ao atualizar: {e}")
 
-# ---------------------------------------------------------------------------
+
+def qrCode():
+    st.title("Leitor de QR Code / Código de Barras")
+
+    if st.button("▶ Iniciar leitura"):
+        cap = cv2.VideoCapture(0)
+
+        frame_placeholder = st.image([])
+        resultado = st.empty()
+        stop = st.button("⏹ Parar")
+
+        while cap.isOpened() and not stop:
+            ret, frame = cap.read()
+            if not ret:
+                st.error("Câmera não encontrada.")
+                break
+
+            codigos = pyzbar.decode(frame)
+
+            if codigos:
+                codigo = codigos[0]  # pega o primeiro código encontrado
+                (x, y, w, h) = codigo.rect
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame_placeholder.image(
+                    frame_rgb, channels="RGB", use_container_width=True)
+
+                dados = codigo.data.decode("utf-8")
+                tipo = codigo.type
+                resultado.success(f"**{tipo}** → `{dados}`")
+                break  # para o loop ao capturar
+
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_placeholder.image(
+                frame_rgb, channels="RGB", use_container_width=True)
+
+        cap.release()
+
+# ---------------------------------------------------------
 # INTERFACE
 # ---------------------------------------------------------------------------
 
@@ -238,6 +277,7 @@ def main():
             entrada_Produtos()
         case "Importar Dados":
             upload_csv()
+            qrCode()
         case "Editar itens cadastrados":
             edição_de_itens()
 
