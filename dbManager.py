@@ -55,39 +55,34 @@ class InventorySystem:
                 EAN INTEGER UNIQUE NOT NULL,
                 nome TEXT UNIQUE NOT NULL,
                 quantidade INTEGER DEFAULT 0,
-                valor REAL DEFAULT 0.0,
+                valor REAL NOT NULL,
                 localizacao TEXT DEFAULT ''
             )
         ''')
 
-        # 2. Tabela de Entradas
+        # 2. Tabela de movimentacoes
         self.db_estoque_SJ.write('''
             CREATE TABLE IF NOT EXISTS Movimentacao (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cod_prod INTEGER NOT NULL,
-                EAN INTEGER UNIQUE NOT NULL,
-                produto_id INTEGER NOT NULL,
                 tipo TEXT NOT NULL CHECK(tipo IN ('Entrada', 'Saida')),
                 quantidade INTEGER NOT NULL,
                 valor REAL DEFAULT 0.0,
-                localizacao TEXT NOT NULL,
                 User TEXT NOT NULL,
                 data TEXT NOT NULL
             )
         ''')
 
-    def registrar_Movimentacao(self, cod_prod, ean, produto_id, qtd, tipo, valor, user):
+    def registrar_Movimentacao(self, cod_prod, qtd, tipo, valor, user):
         """Exemplo de método para registrar no banco de saídas"""
         query = """
-            INSERT INTO Movimentacao (cod_prod, EAN, produto_id, tipo, quantidade, valor, User, data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Movimentacao (cod_prod, tipo, quantidade, valor, User, data)
+            VALUES (?, ?, ?, ?, ?, ?)
         """
         params = (
             cod_prod,
-            ean,
-            produto_id,
-            tipo,
             qtd,
+            tipo,
             valor,
             user,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
