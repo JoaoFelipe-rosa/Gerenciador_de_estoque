@@ -52,6 +52,7 @@ class InventorySystem:
             CREATE TABLE IF NOT EXISTS Produtos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cod_prod INTEGER UNIQUE NOT NULL,
+                EAN INTEGER UNIQUE NOT NULL,
                 nome TEXT UNIQUE NOT NULL,
                 quantidade INTEGER DEFAULT 0,
                 valor REAL DEFAULT 0.0,
@@ -61,37 +62,40 @@ class InventorySystem:
 
         # 2. Tabela de Entradas
         self.db_estoque_SJ.write('''
-            CREATE TABLE IF NOT EXISTS Entradas (
+            CREATE TABLE IF NOT EXISTS Movimentacao (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cod_prod INTEGER NOT NULL,
+                EAN INTEGER UNIQUE NOT NULL,
                 produto_id INTEGER NOT NULL,
-                tipo TEXT NOT NULL,
+                tipo TEXT NOT NULL CHECK(tipo IN ('Entrada', 'Saida')),
                 quantidade INTEGER NOT NULL,
+                valor REAL DEFAULT 0.0,
+                localizacao TEXT NOT NULL,
+                User TEXT NOT NULL,
                 data TEXT NOT NULL
             )
         ''')
 
-        # 3. Tabela de Saídas
-        self.db_estoque_SJ.write('''
-            CREATE TABLE IF NOT EXISTS Saidas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cod_prod INTEGER NOT NULL,
-                produto_id INTEGER NOT NULL,
-                tipo TEXT NOT NULL,
-                quantidade INTEGER NOT NULL,
-                data TEXT NOT NULL
-            )
-        ''')
-
-    def registrar_saida(self, cod_prod, produto_id, qtd):
+    def registrar_Movimentacao(self, cod_prod, ean, produto_id, qtd, tipo, valor, user):
         """Exemplo de método para registrar no banco de saídas"""
-        query = "INSERT INTO Saidas (cod_prod, produto_id, tipo, quantidade, data) VALUES (?,?,?,?,?)"
-        params = (cod_prod, produto_id, 'SAÍDA', qtd,
-                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        query = """
+            INSERT INTO Movimentacao (cod_prod, EAN, produto_id, tipo, quantidade, valor, User, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        params = (
+            cod_prod,
+            ean,
+            produto_id,
+            tipo,
+            qtd,
+            valor,
+            user,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
         try:
             self.db_estoque_SJ.write(query, params)
             # Aqui você também poderia chamar self.db_estoque para subtrair a quantidade
-            st.success("Saída registrada com sucesso!")
+            st.success("Movimentação registrada com sucesso!")
         except Exception as e:
             st.error(f"Erro na saída: {e}")
