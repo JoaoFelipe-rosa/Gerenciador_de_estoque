@@ -1,6 +1,7 @@
 import json
 
 import streamlit as st
+import streamlit_antd_components as sac
 import pandas as pd
 from datetime import datetime
 from dbManager import InventorySystem
@@ -41,6 +42,7 @@ def tela_cadastro():
 
     with st.form("form_cadastro"):
         cod = st.number_input("Código do Produto", step=1)
+        EAN = st.number_input("EAN", step=1)
         nome = st.text_input("Nome do Produto")
         valor = st.number_input("Preço Unitário", format="%.2f")
         local = st.text_input("Localização (Prateleira/Corredor)")
@@ -48,8 +50,8 @@ def tela_cadastro():
         if st.form_submit_button("Salvar"):
             try:
                 repo.db_estoque_SJ.write(
-                    "INSERT INTO Produtos (cod_prod, nome, valor, localizacao) VALUES (?, ?, ?, ?)",
-                    (cod, nome, valor, local)
+                    "INSERT INTO Produtos (cod_prod, EAN, nome, valor, localizacao) VALUES (?, ?, ?, ?,?)",
+                    (cod, EAN, nome, valor, local)
                 )
                 st.success("Produto cadastrado com sucesso!")
             except Exception as e:
@@ -57,20 +59,24 @@ def tela_cadastro():
 
 
 def tela_saidas():
-    st.title("📥 Saida de Estoque")
-    cod_input = st.number_input("Código do Produto", step=1)
+    st.title("📤 Saida de Estoque")
+    cod_input = st.number_input(
+        "Código do Produto", step=1, min_value=0, key="cod_saida")
+    cod_input = int(cod_input)
     nome_produto = buscar_nome_produto(cod_input)
     st.write("Produto selecionado:")
     st.write(f"{nome_produto}")
 
-    qtd_input = st.number_input("Quantidade a Adicionar", min_value=1)
+    qtd_input = st.number_input(
+        "Quantidade a tirar", min_value=1, key="qtd_saida")
+    value_input = st.number_input(
+        "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
+    user_input = st.text_input(
+        "Usuario que retirou:", key="User_saida")
 
     if st.button("Confirmar Saida"):
-        repo.db_estoque_SJ.write(
-            "INSERT INTO Saidas (cod_prod, produto_id, tipo, quantidade, data) VALUES (?,?,?,?,?)",
-            (cod_input, 0, 'SAIDA', qtd_input,
-             datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        )
+        repo.registrar_Movimentacao(
+            cod_input, qtd_input, 'Saida', value_input, user_input)
         repo.db_estoque_SJ.write(
             "UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
             (qtd_input, cod_input, qtd_input)
@@ -82,8 +88,8 @@ def tela_dashboard():
     st.title("📦 Estoque")
 
     # Lendo dados de bancos diferentes
-    df_estoque = repo.db_estoque_SJ.read("SELECT * FROM Produtos")
-    estoque_json = json.loads(df_estoque.to_json(orient="records"))
+    df_estoque = repo.db_estoque_SJ.read(
+        "SELECT * FROM Produtos WHERE quantidade >= 1")
 
     pesquisa = st.text_input(
         "🔍 Pesquisar", placeholder="Digite para buscar...")
@@ -118,28 +124,38 @@ def entrada_Produtos():
     st.write("Produto selecionado:")
     st.write(f"{nome_produto}")
 
-    qtd_input = st.number_input("Quantidade a Adicionar", min_value=1)
+    qtd_input = st.number_input(
+        "Quantidade a Adicionar", min_value=1, key="qtd_entrada")
+    value_input = st.number_input(
+        "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_entrada")
+    user_input = st.text_input(
+        "Usuario:", key="User_entrada")
 
     if st.button("Confirmar Entrada"):
         # Lógica: Registra no db_entrada e atualiza db_estoque
+        # cod_prod,
+        # ean,
+        # tipo,
+        # qtd,
+        # valor,
+        # user,
+        repo.registrar_Movimentacao(
+            cod_input, 'Entrada', qtd_input, value_input, user_input)
         repo.db_estoque_SJ.write(
-            "INSERT INTO Entradas (cod_prod, produto_id, tipo, quantidade, data) VALUES (?,?,?,?,?)",
-            (cod_input, 0, 'ENTRADA', qtd_input,
-             datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        )
-        repo.db_estoque_SJ.write(
-            "UPDATE Produtos SET quantidade = quantidade + ? WHERE cod_prod = ?",
-            (qtd_input, cod_input)
+            "UPDATE Produtos SET quantidade = quantidade + ?, valor = ? WHERE cod_prod = ?",
+            (qtd_input, value_input, cod_input)
         )
         st.success("Estoque atualizado!")
 
 
 def tela_Movimentacoes():
 
-    df_saidas = repo.db_estoque_SJ.read("SELECT * FROM Saidas")
-    df_entradas = repo.db_estoque_SJ.read("SELECT * FROM Entradas")
+    df_saidas = repo.db_estoque_SJ.read(
+        "SELECT * FROM Movimentacao WHERE tipo = 'Saida'")
+    df_entradas = repo.db_estoque_SJ.read(
+        "SELECT * FROM Movimentacao WHERE tipo = 'Entrada'")
     st.title("📊 Relatórios de movimentações")
-    st.text("Saida de produtos:")
+    st.text("📤 Saida de produtos:")
     st.dataframe(
         df_saidas,
         width="stretch",
@@ -216,8 +232,8 @@ def edição_de_itens():
 
 def qrCode():
     st.title("Leitor de QR Code / Código de Barras")
-
     if st.button("▶ Iniciar leitura"):
+
         cap = cv2.VideoCapture(0)
 
         frame_placeholder = st.image([])
@@ -238,17 +254,23 @@ def qrCode():
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                largura = int(frame_rgb.shape[1] * 0.1)
+                altura = int(frame_rgb.shape[0] * 0.1)
+                frame_menor = cv2.resize(
+                    frame_rgb, (largura, altura), interpolation=cv2.INTER_AREA)
                 frame_placeholder.image(
-                    frame_rgb, channels="RGB", use_container_width=True)
+                    frame_menor, channels="RGB", width="stretch")
 
                 dados = codigo.data.decode("utf-8")
                 tipo = codigo.type
-                resultado.success(f"**{tipo}** → `{dados}`")
+                st.success("Código Detectado com Sucesso!")
+                st.markdown(f"**Tipo:** {tipo}")
+                st.markdown(f"**Conteúdo (Dados):** `{dados}`")
                 break  # para o loop ao capturar
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame_placeholder.image(
-                frame_rgb, channels="RGB", use_container_width=True)
+                frame_rgb, channels="RGB", width="stretch")
 
         cap.release()
 
@@ -258,29 +280,72 @@ def qrCode():
 
 
 def main():
-    st.sidebar.title("Navegação")
-    menu = st.sidebar.radio(
-        "Selecione uma opção:",
-        ["Estoque Geral", "Cadastrar Produto",
-            "Registrar Entrada", "Registrar Saída", "Movimentações", "Importar Dados", "Editar itens cadastrados"]
-    )
+
+    with st.sidebar:
+        st.title("Navegação")
+
+        # Adicionamos uma key única aqui para forçar o Streamlit a isolar o componente
+        menu = sac.menu(
+            items=[
+                sac.MenuItem('📦Estoque Geral'),
+                sac.MenuItem('📝Cadastrar Produto'),
+                sac.MenuItem(type='divider'),
+                sac.MenuItem('📥Registrar Entrada'),
+                sac.MenuItem('📤Registrar Saída'),
+                sac.MenuItem('🚚Movimentações'),
+                sac.MenuItem(type='divider'),
+                sac.MenuItem('✏️Editar itens'),
+                sac.MenuItem('📱leitura de codigo de barra'),
+                sac.MenuItem('Importar Dados')
+            ],
+            key='menu_lateral_principal'  # <--- ADICIONE ISSO
+        )
+
+    # Corrigindo seus cases (removendo os emojis no match se necessário,
+    # ou mantendo igual ao texto do MenuItem)
     match menu:
-        case "Estoque Geral":
+        # Nota: O retorno do sac vem exatamente como o texto do MenuItem (com emoji)
+        case "📦Estoque Geral":
             tela_dashboard()
-        case "Movimentações":
+        case "🚚Movimentações":
             tela_Movimentacoes()
-        case "Cadastrar Produto":
+        case "📝Cadastrar Produto":
             tela_cadastro()
-        case "Registrar Saída":
+        case "📤Registrar Saída":
             tela_saidas()
-        case "Registrar Entrada":
+        case "📥Registrar Entrada":
             entrada_Produtos()
         case "Importar Dados":
             upload_csv()
-            qrCode()
-        case "Editar itens cadastrados":
+        case "✏️Editar itens":
             edição_de_itens()
+        case "📱leitura de codigo de barra":
+            qrCode()
 
 
+#  def main():
+    # st.sidebar.title("Navegação")
+    # menu = st.sidebar.radio(
+        # "Selecione uma opção:",
+        # ["📦Estoque Geral", "📝Cadastrar Produto",
+            # "📥Registrar Entrada", "📤Registrar Saída", "🚚Movimentações", "✏️Editar itens", "📱leitura de codigo de barra", "Importar Dados"]
+    # )
+    # match menu:
+        # case "Estoque Geral":
+            # tela_dashboard()
+        # case "Movimentações":
+            # tela_Movimentacoes()
+        # case "Cadastrar Produto":
+            # tela_cadastro()
+        # case "Registrar Saída":
+            # tela_saidas()
+        # case "Registrar Entrada":
+            # entrada_Produtos()
+        # case "Importar Dados":
+            # upload_csv()
+        # case "Editar itens cadastrados":
+            # edição_de_itens()
+        # case "leitura de codigo de barra":
+            # qrCode()
 if __name__ == "__main__":
     main()
