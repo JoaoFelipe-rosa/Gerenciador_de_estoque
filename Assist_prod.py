@@ -58,7 +58,7 @@ def tela_cadastro():
                 st.error(f"Erro: {e}")
 
 
-def tela_saidas():
+def tela_saidas(loged_User):
     st.title("📤 Saida de Estoque")
     cod_input = st.number_input(
         "Código do Produto", step=1, min_value=0, key="cod_saida")
@@ -71,12 +71,14 @@ def tela_saidas():
         "Quantidade a tirar", min_value=1, key="qtd_saida")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
-    user_input = st.text_input(
-        "Usuario que retirou:", key="User_saida")
+    user_input = loged_User
 
     if st.button("Confirmar Saida"):
+        if user_input == "":
+            st.error("Coloque seu nome no registro")
+            st.stop()
         repo.registrar_Movimentacao(
-            cod_input, qtd_input, 'Saida', value_input, user_input)
+            cod_input, 'Saida', qtd_input, value_input, user_input)
         repo.db_estoque_SJ.write(
             "UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
             (qtd_input, cod_input, qtd_input)
@@ -132,13 +134,10 @@ def entrada_Produtos():
         "Usuario:", key="User_entrada")
 
     if st.button("Confirmar Entrada"):
-        # Lógica: Registra no db_entrada e atualiza db_estoque
-        # cod_prod,
-        # ean,
-        # tipo,
-        # qtd,
-        # valor,
-        # user,
+        if user_input == "":
+            st.error("Coloque seu nome no registro")
+            st.stop()
+
         repo.registrar_Movimentacao(
             cod_input, 'Entrada', qtd_input, value_input, user_input)
         repo.db_estoque_SJ.write(

@@ -1,0 +1,20 @@
+cookie:
+  expiry_days: 30
+  key: chave_secreta_aleatoria
+  name: meu_app_cookie
+credentials:
+  usernames:
+    joaosilva:
+      email: joao@email.com
+      failed_login_attempts: 0
+      logged_in: true
+      name: "jo\xE3o felipe"
+      password: $2b$12$n4WUglYpJkXeiaonmNtWzeO.4pPzb7AYvvWjhjm8OOLHrhMIHPpdi
+      roles:
+      - admin
+    mariasouza:
+      email: maria@email.com
+      name: Maria Souza
+      password: $2b$12$5cGgUWvflFWWZ1P6JkL7beieUTgZv6ztGSfUtXnC84j8DapNY9I22
+      roles:
+      - viewer
