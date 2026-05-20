@@ -4,11 +4,11 @@ cookie:
   name: meu_app_cookie
 credentials:
   usernames:
-    joaosilva:
+    joao:
       email: joao@email.com
       failed_login_attempts: 0
       logged_in: true
-      name: "jo\xE3o felipe"
+      name: joao Felipe
       password: $2b$12$n4WUglYpJkXeiaonmNtWzeO.4pPzb7AYvvWjhjm8OOLHrhMIHPpdi
       roles:
       - admin

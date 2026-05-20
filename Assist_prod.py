@@ -16,10 +16,6 @@ if 'repo' not in st.session_state:
 
 repo = st.session_state.repo
 
-st.set_page_config(
-    page_title="ESTOQUE ASISTE SJ",
-    page_icon="📦",
-)
 
 # ---------------------------------------------------------------------------
 # HELPERS
@@ -116,7 +112,7 @@ def tela_dashboard():
         })
 
 
-def entrada_Produtos():
+def entrada_Produtos(loged_User):
     st.title("📥 Entrada de Estoque")
     # Exemplo rápido de campos para entrada
     cod_input = st.number_input(
@@ -130,8 +126,7 @@ def entrada_Produtos():
         "Quantidade a Adicionar", min_value=1, key="qtd_entrada")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_entrada")
-    user_input = st.text_input(
-        "Usuario:", key="User_entrada")
+    user_input = loged_User
 
     if st.button("Confirmar Entrada"):
         if user_input == "":
@@ -272,79 +267,3 @@ def qrCode():
                 frame_rgb, channels="RGB", width="stretch")
 
         cap.release()
-
-# ---------------------------------------------------------
-# INTERFACE
-# ---------------------------------------------------------------------------
-
-
-def main():
-
-    with st.sidebar:
-        st.title("Navegação")
-
-        # Adicionamos uma key única aqui para forçar o Streamlit a isolar o componente
-        menu = sac.menu(
-            items=[
-                sac.MenuItem('📦Estoque Geral'),
-                sac.MenuItem('📝Cadastrar Produto'),
-                sac.MenuItem(type='divider'),
-                sac.MenuItem('📥Registrar Entrada'),
-                sac.MenuItem('📤Registrar Saída'),
-                sac.MenuItem('🚚Movimentações'),
-                sac.MenuItem(type='divider'),
-                sac.MenuItem('✏️Editar itens'),
-                sac.MenuItem('📱leitura de codigo de barra'),
-                sac.MenuItem('Importar Dados')
-            ],
-            key='menu_lateral_principal'  # <--- ADICIONE ISSO
-        )
-
-    # Corrigindo seus cases (removendo os emojis no match se necessário,
-    # ou mantendo igual ao texto do MenuItem)
-    match menu:
-        # Nota: O retorno do sac vem exatamente como o texto do MenuItem (com emoji)
-        case "📦Estoque Geral":
-            tela_dashboard()
-        case "🚚Movimentações":
-            tela_Movimentacoes()
-        case "📝Cadastrar Produto":
-            tela_cadastro()
-        case "📤Registrar Saída":
-            tela_saidas()
-        case "📥Registrar Entrada":
-            entrada_Produtos()
-        case "Importar Dados":
-            upload_csv()
-        case "✏️Editar itens":
-            edição_de_itens()
-        case "📱leitura de codigo de barra":
-            qrCode()
-
-
-#  def main():
-    # st.sidebar.title("Navegação")
-    # menu = st.sidebar.radio(
-        # "Selecione uma opção:",
-        # ["📦Estoque Geral", "📝Cadastrar Produto",
-            # "📥Registrar Entrada", "📤Registrar Saída", "🚚Movimentações", "✏️Editar itens", "📱leitura de codigo de barra", "Importar Dados"]
-    # )
-    # match menu:
-        # case "Estoque Geral":
-            # tela_dashboard()
-        # case "Movimentações":
-            # tela_Movimentacoes()
-        # case "Cadastrar Produto":
-            # tela_cadastro()
-        # case "Registrar Saída":
-            # tela_saidas()
-        # case "Registrar Entrada":
-            # entrada_Produtos()
-        # case "Importar Dados":
-            # upload_csv()
-        # case "Editar itens cadastrados":
-            # edição_de_itens()
-        # case "leitura de codigo de barra":
-            # qrCode()
-if __name__ == "__main__":
-    main()

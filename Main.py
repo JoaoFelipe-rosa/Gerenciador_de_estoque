@@ -19,6 +19,11 @@ authenticator = stauth.Authenticate(
 )
 
 # 3. Renderiza o formulário de login
+st.set_page_config(
+    page_title="ESTOQUE ASISTE SJ",
+    page_icon="📦",
+)
+
 authenticator.login()
 
 # 4. Controla o acesso
@@ -26,6 +31,7 @@ if st.session_state.get("authentication_status"):
     authenticator.logout("Sair", "sidebar")
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
     loged_User = st.session_state['name']
+
     with st.sidebar:
         st.title("Navegação")
 
@@ -59,7 +65,7 @@ if st.session_state.get("authentication_status"):
         case "📤Registrar Saída":
             Assist_prod.tela_saidas(loged_User)
         case "📥Registrar Entrada":
-            Assist_prod.entrada_Produtos()
+            Assist_prod.entrada_Produtos(loged_User)
         case "Importar Dados":
             Assist_prod.upload_csv()
         case "✏️Editar itens":
