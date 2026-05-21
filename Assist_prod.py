@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
@@ -7,6 +8,10 @@ from datetime import datetime
 from dbManager import InventorySystem
 import cv2
 from pyzbar import pyzbar
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+import av
+import time
+import queue
 
 # ---------------------------------------------------------------------------
 # BANCO DE DADOS
@@ -95,7 +100,7 @@ def tela_dashboard():
     if pesquisa:
         mask = df_estoque.apply(lambda col: col.astype(
             str).str.contains(pesquisa, case=False, na=False)).any(axis=1)
-        df_filtrado = df_estoque[mask]
+        df_filtrado = df_estoque[mask].iloc[:, 1:]
     else:
         df_filtrado = df_estoque.iloc[:, 1:]
 
@@ -165,8 +170,15 @@ def tela_Movimentacoes():
 
 def upload_csv():
     arquivo = st.file_uploader("📂 Importar CSV", type="csv")
+
     if arquivo:
-        df = pd.read_csv(arquivo, sep=";", encoding="utf-8")
+        try:
+            df = pd.read_csv(arquivo, sep=";", encoding="latin-1")
+
+        except UnicodeDecodeError:
+            arquivo.seek(0)
+            df = pd.read_csv(arquivo, sep=":", encoding="cp1252")
+
         st.write(f"**{len(df)} registros encontrados:**")
         st.dataframe(df, hide_index=True)
 
@@ -174,7 +186,9 @@ def upload_csv():
         with col1:
             if st.button("✅ Confirmar inserção"):
                 try:
-                    repo.db_estoque_SJ.import_csv("Produtos", arquivo)
+                    arquivo.seek(0)
+                    repo.db_estoque_SJ.import_csv(
+                        "Produtos", arquivo, encoding="latin-1")
                     st.success(f"{len(df)} registros inseridos!")
                 except Exception as e:
                     st.error(f"Erro ao inserir:{e}")
@@ -185,8 +199,12 @@ def upload_csv():
 
 def edição_de_itens():
     st.subheader("✏️ Editar Produto")
+
+    if "reset_busca" not in st.session_state:
+        st.session_state["reset_busca"] = 0
+
     cod_busca = st.text_input(
-        "🔍 Digite o código do produto", key="cod_busca_input")
+        "🔍 Digite o código do produto", key=f"cod_busca_input_{st.session_state['reset_busca']}")
 
     if cod_busca:
         st.session_state["cod_busca"] = cod_busca
@@ -216,54 +234,82 @@ def edição_de_itens():
                     try:
                         repo.db_estoque_SJ.write(
                             """UPDATE Produtos SET cod_prod = ?, nome = ?, valor = ?, localizacao = ? WHERE cod_prod = ?""",
-                            (int(cod_prod), nome, float(
-                                valor), localizacao, int(produto["cod_prod"]))
+                            (int(cod_prod), str(nome), float(
+                                valor), str(localizacao), int(produto["cod_prod"]))
                         )
+                        st.session_state["cod_busca"] = ""
+                        st.session_state["reset_busca"] += 1
                         st.success("Produto atualizado com sucesso!")
+                        time.sleep(1)
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao atualizar: {e}")
 
 
 def qrCode():
-    st.title("Leitor de QR Code / Código de Barras")
-    if st.button("▶ Iniciar leitura"):
+    if "codigo_detectado" not in st.session_state:
+        st.session_state.codigo_detectado = None
 
-        cap = cv2.VideoCapture(0)
+    st.title("📷 Leitor de QR Code / Barcode")
 
-        frame_placeholder = st.image([])
-        resultado = st.empty()
-        stop = st.button("⏹ Parar")
+    # --- ESTADO 2: Código já encontrado ---
+    if st.session_state.codigo_detectado is not None:
+        resultado = st.session_state.codigo_detectado
+        st.success("✅ Código detectado com sucesso!")
+        st.markdown(f"**Tipo:** {resultado['tipo']}")
+        st.markdown(f"**Dados:** `{resultado['dados']}`")
 
-        while cap.isOpened() and not stop:
-            ret, frame = cap.read()
-            if not ret:
-                st.error("Câmera não encontrada.")
-                break
+        if st.button("🔄 Nova leitura"):
+            st.session_state.codigo_detectado = None
+            st.rerun()
+        return
 
-            codigos = pyzbar.decode(frame)
+    # --- ESTADO 1: Leitura ativa ---
+    st.info("🎥 Câmera ativa — aponte para um QR Code ou código de barras.")
 
-            if codigos:
-                codigo = codigos[0]  # pega o primeiro código encontrado
-                (x, y, w, h) = codigo.rect
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    if "resultado_buffer" not in st.session_state:
+        st.session_state.resultado_buffer = queue.Queue(maxsize=1)
 
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                largura = int(frame_rgb.shape[1] * 0.1)
-                altura = int(frame_rgb.shape[0] * 0.1)
-                frame_menor = cv2.resize(
-                    frame_rgb, (largura, altura), interpolation=cv2.INTER_AREA)
-                frame_placeholder.image(
-                    frame_menor, channels="RGB", width="stretch")
+    resultado_queue = st.session_state.resultado_buffer
 
-                dados = codigo.data.decode("utf-8")
-                tipo = codigo.type
-                st.success("Código Detectado com Sucesso!")
-                st.markdown(f"**Tipo:** {tipo}")
-                st.markdown(f"**Conteúdo (Dados):** `{dados}`")
-                break  # para o loop ao capturar
+    def processar_frame(frame):
+        img = frame.to_ndarray(format="bgr24")
+        codigos = pyzbar.decode(img)
 
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_placeholder.image(
-                frame_rgb, channels="RGB", width="stretch")
+        if codigos:
+            codigo = codigos[0]
+            (x, y, w, h) = codigo.rect
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            try:
+                resultado_queue.put_nowait({
+                    "dados": codigo.data.decode("utf-8"),
+                    "tipo": codigo.type
+                })
+            except queue.Full:
+                pass
 
-        cap.release()
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+    ctx = webrtc_streamer(
+        key="leitor",
+        mode=WebRtcMode.SENDRECV,
+        video_frame_callback=processar_frame,
+        media_stream_constraints={"video": True, "audio": False},
+        desired_playing_state=True,
+    )
+
+    # Polling externo ao ctx — roda a cada rerun do Streamlit
+    if not resultado_queue.empty():
+        try:
+            resultado = resultado_queue.get_nowait()
+            st.session_state.codigo_detectado = resultado
+            st.session_state.resultado_buffer = queue.Queue(
+                maxsize=1)  # reseta a fila
+            st.rerun()
+        except queue.Empty:
+            pass
+
+    # Força o Streamlit a re-executar enquanto câmera ativa
+    if ctx.state.playing:
+        time.sleep(0.3)
+        st.rerun()

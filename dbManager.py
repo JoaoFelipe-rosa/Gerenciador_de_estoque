@@ -26,9 +26,9 @@ class DataBaseManager:
             conn.execute(query, parms)
             conn.commit()
 
-    def import_csv(self, tabela, arquivo_csv, if_exists: Literal["fail", "replace", "append", "delete_rows"] = "append"):
+    def import_csv(self, tabela, arquivo_csv, encoding, if_exists: Literal["fail", "replace", "append", "delete_rows"] = "append"):
         """Importa um csv para o banco de dados """
-        df = pd.read_csv(arquivo_csv, sep=";", encoding="utf-8")
+        df = pd.read_csv(arquivo_csv, sep=";", encoding=encoding)
         with self.get_connection() as conn:
             df.to_sql(tabela, con=conn, if_exists=if_exists, index=False)
         return df
