@@ -4,6 +4,14 @@ cookie:
   name: meu_app_cookie
 credentials:
   usernames:
+    adriano:
+      email: adriano@email.com
+      failed_login_attempts: 0
+      logged_in: false
+      name: Larilson
+      password: $2b$12$FlmlQAc8bgeiWlwnVwAkDeY3dDED.co36olnqh0SaZ3uH038yakhG
+      roles:
+      - viewer
     joao:
       email: joao@email.com
       failed_login_attempts: 0
@@ -13,13 +21,14 @@ credentials:
       roles:
       - admin
     larilson:
-      email: larilson@email.com
+      email: adriano@email.com
       failed_login_attempts: 0
-      logged_in: true
+      logged_in: false
       name: Larilson
-      password: $2b$12$7GG26I4N6V6FVb7sUzIJteNspACIm.aRVhdUEhIPFNfAQjBA4lYmS
+      password: $2b$12$854kirsdlrc1DNTdGEgNwudRSjbkTygvLYmonn7Jkm5o8pKASe3US
       roles:
       - viewer
 filiais:
+  adriano: sao_jose
   joao: sao_jose
-  larilson: Jaragua
+  larilson: sao_jose
