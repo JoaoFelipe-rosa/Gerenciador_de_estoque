@@ -141,6 +141,22 @@ def tela_dashboard():
         })
 
 
+def exportar_csv():
+    db = get_db()
+    options = ["Produtos", "Movimentacao"]
+
+    selecionado = st.selectbox(label="Dados a ser baixado:", options=options)
+
+    df = db.read(f"SELECT * FROM {selecionado}")
+    csv = df.to_csv(index=False, sep=";", decimal=",", encoding="latin-1")
+    st.download_button(
+        label="📥 Exportar dados dos produtos",
+        data=csv.encode("latin-1"),
+        file_name=f"estoque_{st.session_state.get('filial', 'geral')}_{datetime.now().strftime('%d-%m-%Y')}.csv",
+        mime="text/csv"
+    )
+
+
 def entrada_Produtos(loged_User):
     st.title("📥 Entrada de Estoque")
     db = get_db()

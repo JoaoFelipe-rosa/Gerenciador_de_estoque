@@ -79,6 +79,7 @@ if st.session_state.get("authentication_status"):
             Assist_prod.entrada_Produtos(loged_User)
         case "Importar Dados":
             Assist_prod.upload_csv()
+            Assist_prod.exportar_csv()
         case "✏️Editar itens":
             Assist_prod.edição_de_itens()
         case "📱leitura de codigo de barra":
