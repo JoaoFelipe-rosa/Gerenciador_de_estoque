@@ -9,20 +9,17 @@ credentials:
       failed_login_attempts: 0
       logged_in: true
       name: joao Felipe
-      password: $2b$12$n4WUglYpJkXeiaonmNtWzeO.4pPzb7AYvvWjhjm8OOLHrhMIHPpdi
+      password: $2b$12$u7jPYidUhOPpV/EanmVz6uJGBNWASLrxbYdZFcDVOPuEtrCcRCQiO
       roles:
       - admin
-    lari:
-      email: maria@email.com
+    larilson:
+      email: larilson@email.com
       failed_login_attempts: 0
       logged_in: true
       name: Larilson
-      password: $2b$12$qda15rBNNHWwLhZHEDgk6usXOQfhO63Sd/LhNwtOb5NhOC9qUUyOG
+      password: $2b$12$7GG26I4N6V6FVb7sUzIJteNspACIm.aRVhdUEhIPFNfAQjBA4lYmS
       roles:
       - viewer
-    mariasouza:
-      email: maria@email.com
-      name: Maria Souza
-      password: $2b$12$5cGgUWvflFWWZ1P6JkL7beieUTgZv6ztGSfUtXnC84j8DapNY9I22
-      roles:
-      - viewer
+filiais:
+  joao: sao_jose
+  larilson: Jaragua

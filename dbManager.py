@@ -57,29 +57,32 @@ class DataBaseManager:
 
 class InventorySystem:
     def __init__(self):
-        # Inicializa os 3 gerenciadores independentes
-        self.db_estoque_SJ = DataBaseManager("Estoque_SJ")
+        self._bancos = {}
+        # Filiais existentes — adicione novas aqui
+        for filial in ["sao_jose", "Jaragua", "chapeco"]:
+            self._init_filial(filial)
 
-        # Cria as tabelas se não existirem
-        self._init_all_dbs()
+    def get_db(self, filial: str) -> DataBaseManager:
+        """Retorna o banco da filial, criando se não existir"""
+        if filial not in self._bancos:
+            self._init_filial(filial)
+        return self._bancos[filial]
 
-    def _init_all_dbs(self):
-        """Configuração inicial de cada banco de dados"""
-        # 1. Tabela de Produtos (Estoque)
-        self.db_estoque_SJ.write('''
+    def _init_filial(self, filial: str):
+        db = DataBaseManager(f"Estoque_{filial}")
+        self._bancos[filial] = db
+
+        db.write('''
             CREATE TABLE IF NOT EXISTS Produtos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cod_prod INTEGER UNIQUE NOT NULL,
-                EAN INTEGER UNIQUE NOT NULL,
-                nome TEXT UNIQUE NOT NULL,
+                nome TEXT NOT NULL,
                 quantidade INTEGER DEFAULT 0,
-                valor REAL NOT NULL,
+                valor REAL DEFAULT 0,
                 localizacao TEXT DEFAULT ''
             )
         ''')
-
-        # 2. Tabela de movimentacoes
-        self.db_estoque_SJ.write('''
+        db.write('''
             CREATE TABLE IF NOT EXISTS Movimentacao (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cod_prod INTEGER NOT NULL,
@@ -91,24 +94,14 @@ class InventorySystem:
             )
         ''')
 
-    def registrar_Movimentacao(self, cod_prod, qtd, tipo, valor, user):
-        """Exemplo de método para registrar no banco de saídas"""
+    def registrar_Movimentacao(self, filial, cod_prod, tipo, qtd, valor, user):
         query = """
             INSERT INTO Movimentacao (cod_prod, tipo, quantidade, valor, User, data)
             VALUES (?, ?, ?, ?, ?, ?)
         """
-        params = (
-            cod_prod,
-            qtd,
-            tipo,
-            valor,
-            user,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
-
+        params = (cod_prod, tipo, qtd, valor, user,
+                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         try:
-            self.db_estoque_SJ.write(query, params)
-            # Aqui você também poderia chamar self.db_estoque para subtrair a quantidade
-            st.success("Movimentação registrada com sucesso!")
+            self.get_db(filial).write(query, params)
         except Exception as e:
-            st.error(f"Erro na saída: {e}")
+            st.error(f"Erro ao registrar movimentação: {e}")

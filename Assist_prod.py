@@ -197,28 +197,44 @@ def tela_Movimentacoes():
 
 def upload_csv():
     arquivo = st.file_uploader("📂 Importar CSV", type="csv")
+    db = get_db()
 
     if arquivo:
         try:
             df = pd.read_csv(arquivo, sep=";", encoding="latin-1")
-
         except UnicodeDecodeError:
             arquivo.seek(0)
-            df = pd.read_csv(arquivo, sep=":", encoding="cp1252")
+            df = pd.read_csv(arquivo, sep=";", encoding="cp1252")
 
-        st.write(f"**{len(df)} registros encontrados:**")
-        st.dataframe(df, hide_index=True)
+        # Remove colunas Unnamed
+        df = df.loc[:, ~df.columns.str.contains(r"^Unnamed")]
+
+        # Separa linhas inválidas (nome vazio ou cod_prod nulo)
+        mask_invalidas = df["nome"].isna() | (
+            df["nome"].str.strip() == "") | df["cod_prod"].isna()
+        df_invalido = df[mask_invalidas]
+        df_valido = df[~mask_invalidas].copy()
+
+        if not df_invalido.empty:
+            st.warning(
+                f"⚠️ {len(df_invalido)} linha(s) sem nome ou código serão ignoradas:")
+            st.dataframe(df_invalido, hide_index=True)
+
+        st.write(f"**{len(df_valido)} registros válidos encontrados:**")
+        st.dataframe(df_valido, hide_index=True)
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("✅ Confirmar inserção"):
                 try:
                     arquivo.seek(0)
-                    repo.db_estoque_SJ.import_csv(
+                    db.import_csv(
                         "Produtos", arquivo, encoding="latin-1")
-                    st.success(f"{len(df)} registros inseridos!")
+                    st.success(f"{len(df_valido)} registros inseridos!")
                 except Exception as e:
-                    st.error(f"Erro ao inserir:{e}")
+                    import traceback
+                    st.error(f"Erro ao inserir: {e}")
+                    st.code(traceback.format_exc())
         with col2:
             if st.button("❌ Cancelar"):
                 st.warning("Importação cancelada.")

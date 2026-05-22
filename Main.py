@@ -31,6 +31,17 @@ if st.session_state.get("authentication_status"):
     authenticator.logout("Sair", "sidebar")
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
     loged_User = st.session_state['name']
+    username = st.session_state["username"]
+    filial = config.get("filiais", {}).get(username)
+
+    if not filial:
+        st.error(
+            "❌ Seu usuário não possui filial cadastrada. Contate o administrador.")
+        authenticator.logout("Sair", "sidebar")
+        st.stop()
+
+    if "filial" not in st.session_state:
+        st.session_state["filial"] = filial
 
     with st.sidebar:
         st.title("Navegação")
