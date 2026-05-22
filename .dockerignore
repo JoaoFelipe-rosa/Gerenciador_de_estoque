@@ -1,0 +1,25 @@
+# Cache Python
+__pycache__/
+*.pyc
+*.cpython-314.pyc
+
+# Banco de dados (montado via volume)
+DB/
+
+# Editor
+.vscode/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker (não precisa copiar ele mesmo)
+Dockerfile
+docker-compose.yml
+
+# Scripts locais
+Run.ps1
+
+# Documentação
+README.md

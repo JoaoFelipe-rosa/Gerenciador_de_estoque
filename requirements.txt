@@ -1,8 +1,10 @@
 streamlit
-pandas
-streamlit-antd-components
 streamlit-authenticator
 PyYAML
-opencv-python
+streamlit-antd-components
+numpy
+pandas
+opencv-python-headless
 pyzbar
 streamlit-webrtc
+av
