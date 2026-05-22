@@ -152,7 +152,7 @@ def exportar_csv():
     st.download_button(
         label="📥 Exportar dados dos produtos",
         data=csv.encode("latin-1"),
-        file_name=f"estoque_{st.session_state.get('filial', 'geral')}_{datetime.now().strftime('%d-%m-%Y')}.csv",
+        file_name=f"{selecionado}_{st.session_state.get('filial', 'geral')}_{datetime.now().strftime('%d-%m-%Y')}.csv",
         mime="text/csv"
     )
 
