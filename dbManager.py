@@ -26,11 +26,29 @@ class DataBaseManager:
             conn.execute(query, parms)
             conn.commit()
 
-    def import_csv(self, tabela, arquivo_csv, encoding, if_exists: Literal["fail", "replace", "append", "delete_rows"] = "append"):
-        """Importa um csv para o banco de dados """
+    def import_csv(self, tabela, arquivo_csv, encoding, if_exists="append"):
         df = pd.read_csv(arquivo_csv, sep=";", encoding=encoding)
+        df = df.loc[:, ~df.columns.str.contains(r"^Unnamed")]
+
+        if "valor" in df.columns:
+            df["valor"] = (
+                df["valor"]
+                .astype(str)
+                .str.replace(".", "", regex=False)
+                .str.replace(",", ".", regex=False)
+                .astype(float)
+            )
+
+        # Remove linhas com campos obrigatórios vazios
+        df = df.dropna(subset=["cod_prod", "nome"])
+        df = df[df["nome"].str.strip() != ""]
+
         with self.get_connection() as conn:
-            df.to_sql(tabela, con=conn, if_exists=if_exists, index=False)
+            colunas = ", ".join(df.columns)
+            placeholders = ", ".join(["?"] * len(df.columns))
+            sql = f"INSERT OR REPLACE INTO {tabela} ({colunas}) VALUES ({placeholders})"
+            conn.executemany(sql, df.itertuples(index=False, name=None))
+            conn.commit()
         return df
 
 

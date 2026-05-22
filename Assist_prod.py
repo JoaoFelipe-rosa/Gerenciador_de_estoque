@@ -26,11 +26,22 @@ repo = st.session_state.repo
 # HELPERS
 # ---------------------------------------------------------------------------
 
+def get_db():
+    """RETORNA A FILIAL DO USER LOGADO"""
+
+    filial = st.session_state.get("filial")
+    if not filial:
+        st.error(
+            "❌ Usuário sem filial cadastrada. Contate o administrador.")
+        st.stop()
+    return repo.get_db(filial)
+
 
 def buscar_nome_produto(cod):
+    db = get_db()
     if cod == 0:
         return "Insira um codigo de produto"
-    resultado = repo.db_estoque_SJ.read(
+    resultado = db.read(
         "SELECT nome FROM Produtos WHERE cod_prod = ?", (cod,))
 
     if resultado is not None and not resultado.empty:
@@ -41,18 +52,19 @@ def buscar_nome_produto(cod):
 def tela_cadastro():
     st.title("📦 Cadastro de Produtos")
 
+    db = get_db()
+
     with st.form("form_cadastro"):
         cod = st.number_input("Código do Produto", step=1)
-        EAN = st.number_input("EAN", step=1)
         nome = st.text_input("Nome do Produto")
         valor = st.number_input("Preço Unitário", format="%.2f")
         local = st.text_input("Localização (Prateleira/Corredor)")
 
         if st.form_submit_button("Salvar"):
             try:
-                repo.db_estoque_SJ.write(
-                    "INSERT INTO Produtos (cod_prod, EAN, nome, valor, localizacao) VALUES (?, ?, ?, ?,?)",
-                    (cod, EAN, nome, valor, local)
+                db.write(
+                    "INSERT INTO Produtos (cod_prod, nome, valor, localizacao) VALUES ( ?, ?, ?,?)",
+                    (cod, nome, valor, local)
                 )
                 st.success("Produto cadastrado com sucesso!")
             except Exception as e:
@@ -61,6 +73,9 @@ def tela_cadastro():
 
 def tela_saidas(loged_User):
     st.title("📤 Saida de Estoque")
+    db = get_db()
+    filial = st.session_state["filial"]
+
     cod_input = st.number_input(
         "Código do Produto", step=1, min_value=0, key="cod_saida")
     cod_input = int(cod_input)
@@ -78,20 +93,29 @@ def tela_saidas(loged_User):
         if user_input == "":
             st.error("Coloque seu nome no registro")
             st.stop()
+
+        with db.get_connection()as conn:
+            cursor = conn.execute("UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
+                                  (qtd_input, cod_input, qtd_input))
+            conn.commit()
+
+        if cursor.rowcount == 0:
+            st.error(f"❌ Estoque insuficiente para o produto {cod_input}!")
+            st.stop()
+
         repo.registrar_Movimentacao(
-            cod_input, 'Saida', qtd_input, value_input, user_input)
-        repo.db_estoque_SJ.write(
-            "UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
-            (qtd_input, cod_input, qtd_input)
-        )
-        st.success("Estoque atualizado!")
+            filial, cod_input, 'Saida', qtd_input, value_input, user_input)
+
+        st.success("✅ Estoque atualizado!")
 
 
 def tela_dashboard():
     st.title("📦 Estoque")
 
+    db = get_db()
+
     # Lendo dados de bancos diferentes
-    df_estoque = repo.db_estoque_SJ.read(
+    df_estoque = db.read(
         "SELECT * FROM Produtos WHERE quantidade >= 1")
 
     pesquisa = st.text_input(
@@ -119,6 +143,8 @@ def tela_dashboard():
 
 def entrada_Produtos(loged_User):
     st.title("📥 Entrada de Estoque")
+    db = get_db()
+    filial = st.session_state["filial"]
     # Exemplo rápido de campos para entrada
     cod_input = st.number_input(
         "Código do Produto", step=1, min_value=0, key="cod_entrada")
@@ -139,8 +165,8 @@ def entrada_Produtos(loged_User):
             st.stop()
 
         repo.registrar_Movimentacao(
-            cod_input, 'Entrada', qtd_input, value_input, user_input)
-        repo.db_estoque_SJ.write(
+            filial, cod_input, 'Entrada', qtd_input, value_input, user_input)
+        db.write(
             "UPDATE Produtos SET quantidade = quantidade + ?, valor = ? WHERE cod_prod = ?",
             (qtd_input, value_input, cod_input)
         )
@@ -148,10 +174,11 @@ def entrada_Produtos(loged_User):
 
 
 def tela_Movimentacoes():
+    db = get_db()
 
-    df_saidas = repo.db_estoque_SJ.read(
+    df_saidas = db.read(
         "SELECT * FROM Movimentacao WHERE tipo = 'Saida'")
-    df_entradas = repo.db_estoque_SJ.read(
+    df_entradas = db.read(
         "SELECT * FROM Movimentacao WHERE tipo = 'Entrada'")
     st.title("📊 Relatórios de movimentações")
     st.text("📤 Saida de produtos:")
@@ -199,6 +226,7 @@ def upload_csv():
 
 def edição_de_itens():
     st.subheader("✏️ Editar Produto")
+    db = get_db()
 
     if "reset_busca" not in st.session_state:
         st.session_state["reset_busca"] = 0
@@ -212,7 +240,7 @@ def edição_de_itens():
     codigo = st.session_state.get("cod_busca", "")
 
     if codigo:
-        df = repo.db_estoque_SJ.read(
+        df = db.read(
             "SELECT * FROM Produtos WHERE cod_prod = ?", params=(cod_busca,))
 
         if df.empty:
@@ -232,7 +260,7 @@ def edição_de_itens():
 
                 if salvar:
                     try:
-                        repo.db_estoque_SJ.write(
+                        db.write(
                             """UPDATE Produtos SET cod_prod = ?, nome = ?, valor = ?, localizacao = ? WHERE cod_prod = ?""",
                             (int(cod_prod), str(nome), float(
                                 valor), str(localizacao), int(produto["cod_prod"]))
