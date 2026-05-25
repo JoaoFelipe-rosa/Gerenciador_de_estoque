@@ -108,7 +108,7 @@ if st.session_state.get("authentication_status"):
             Assist_prod.upload_csv()
             Assist_prod.exportar_csv()
         case "✏️Editar itens":
-            Assist_prod.requer_role(["admin"])
+            requer_role(["admin"])
             Assist_prod.edição_de_itens()
         case "📱leitura de codigo de barra":
             Assist_prod.qrCode()
