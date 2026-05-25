@@ -4,7 +4,6 @@ import yaml
 from yaml.loader import SafeLoader
 import streamlit_antd_components as sac
 import Assist_prod
-import time
 
 
 # 1. Carrega o config
@@ -18,6 +17,16 @@ def sessionLogout(*args, **kwargs):
     st.session_state["name"] = None
     st.session_state["filial"] = None
     st.rerun()
+
+
+def requer_role(roles_permitidas: list):
+    """Bloqueia acesso se o usuário não tiver a role necessária"""
+    roles_usuario = config["credentials"]["usernames"][st.session_state["username"]].get(
+        "roles", [])
+
+    if not any(r in roles_permitidas for r in roles_usuario):
+        st.error("❌ Você não tem permissão para acessar esta página.")
+        st.stop()
 
 
 st.set_page_config(

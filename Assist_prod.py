@@ -12,7 +12,6 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import av
 import time
 import queue
-import Main
 
 # ---------------------------------------------------------------------------
 # BANCO DE DADOS
@@ -374,13 +373,3 @@ def qrCode():
     if ctx.state.playing:
         time.sleep(0.3)
         st.rerun()
-
-
-def requer_role(roles_permitidas: list):
-    """Bloqueia acesso se o usuário não tiver a role necessária"""
-    roles_usuario = Main.config["credentials"]["usernames"][st.session_state["username"]].get(
-        "roles", [])
-
-    if not any(r in roles_permitidas for r in roles_usuario):
-        st.error("❌ Você não tem permissão para acessar esta página.")
-        st.stop()
