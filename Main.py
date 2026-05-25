@@ -4,11 +4,17 @@ import yaml
 from yaml.loader import SafeLoader
 import streamlit_antd_components as sac
 import Assist_prod
+import time
 
 
 # 1. Carrega o config
 with open("config.yaml", encoding="utf-8") as f:
     config = yaml.load(f, Loader=SafeLoader)
+
+st.set_page_config(
+    page_title="ESTOQUE ASISTE SJ",
+    page_icon="📦",
+)
 
 # 2. Cria o autenticador
 authenticator = stauth.Authenticate(
@@ -16,20 +22,27 @@ authenticator = stauth.Authenticate(
     config["cookie"]["name"],
     config["cookie"]["key"],
     config["cookie"]["expiry_days"],
+
 )
 
-# 3. Renderiza o formulário de login
-st.set_page_config(
-    page_title="ESTOQUE ASISTE SJ",
-    page_icon="📦",
-)
+# 3. Renderiza o formulário de login, com maximo de tentativas
+try:
+    authenticator.login(max_login_attempts=3, single_session=True)
+except Exception as e:
+    if "Maximum number of login attempts exceeded" in str(e):
+        st.error(
+            "🔒 Usuário bloqueado por excesso de tentativas. Contate o administrador.")
+        st.stop()
+    else:
+        st.error(f"Erro no login: {e}")
+        st.stop()
 
-authenticator.login()
 
-# 4. Controla o acesso
+# 4. Controla o acesso e mostra os menus
 if st.session_state.get("authentication_status"):
-    authenticator.logout("Sair", "sidebar")
+    authenticator.logout("Sair", "sidebar", key="side_bar")
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
+
     loged_User = st.session_state['name']
     username = st.session_state["username"]
     filial = config.get("filiais", {}).get(username)
@@ -37,7 +50,6 @@ if st.session_state.get("authentication_status"):
     if not filial:
         st.error(
             "❌ Seu usuário não possui filial cadastrada. Contate o administrador.")
-        authenticator.logout("Sair", "sidebar")
         st.stop()
 
     if "filial" not in st.session_state:
@@ -46,7 +58,6 @@ if st.session_state.get("authentication_status"):
     with st.sidebar:
         st.title("Navegação")
 
-        # Adicionamos uma key única aqui para forçar o Streamlit a isolar o componente
         menu = sac.menu(
             items=[
                 sac.MenuItem('📦Estoque Geral'),
@@ -60,13 +71,10 @@ if st.session_state.get("authentication_status"):
                 sac.MenuItem('📱leitura de codigo de barra'),
                 sac.MenuItem('Importar Dados')
             ],
-            key='menu_lateral_principal'  # <--- ADICIONE ISSO
+            key='menu_lateral_principal'
         )
 
-    # Corrigindo seus cases (removendo os emojis no match se necessário,
-    # ou mantendo igual ao texto do MenuItem)
     match menu:
-        # Nota: O retorno do sac vem exatamente como o texto do MenuItem (com emoji)
         case "📦Estoque Geral":
             Assist_prod.tela_dashboard()
         case "🚚Movimentações":
@@ -86,11 +94,10 @@ if st.session_state.get("authentication_status"):
             Assist_prod.qrCode()
 
 elif st.session_state.get("authentication_status") is False:
-    st.error("Usuário ou senha incorretos")
+    st.error("❌ Usuário ou senha incorretos.")
 
 else:
     st.warning("Por favor, faça login")
 
-# 5. IMPORTANTE: salva o config atualizado (hashes gerados)
 with open("config.yaml", "w", encoding="utf-8") as f:
     yaml.dump(config, f, default_flow_style=False)
