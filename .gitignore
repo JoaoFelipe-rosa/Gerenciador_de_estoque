@@ -1,3 +1,5 @@
 #ignora qualquer arquivo .db na pasta do projeto
 *.db
 config.yaml
+__pycache__/*
+*.pyc

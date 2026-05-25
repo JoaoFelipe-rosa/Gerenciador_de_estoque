@@ -11,6 +11,15 @@ import time
 with open("config.yaml", encoding="utf-8") as f:
     config = yaml.load(f, Loader=SafeLoader)
 
+
+def sessionLogout(*args, **kwargs):
+    st.session_state["authentication_status"] = None
+    st.session_state["username"] = None
+    st.session_state["name"] = None
+    st.session_state["filial"] = None
+    st.rerun()
+
+
 st.set_page_config(
     page_title="ESTOQUE ASISTE SJ",
     page_icon="📦",
@@ -27,7 +36,7 @@ authenticator = stauth.Authenticate(
 
 # 3. Renderiza o formulário de login, com maximo de tentativas
 try:
-    authenticator.login(max_login_attempts=3, single_session=True)
+    authenticator.login(max_login_attempts=3, single_session=False)
 except Exception as e:
     if "Maximum number of login attempts exceeded" in str(e):
         st.error(
@@ -40,7 +49,8 @@ except Exception as e:
 
 # 4. Controla o acesso e mostra os menus
 if st.session_state.get("authentication_status"):
-    authenticator.logout("Sair", "sidebar", key="side_bar")
+    authenticator.logout("Sair", "sidebar", key="side_bar",
+                         callback=sessionLogout)
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
 
     loged_User = st.session_state['name']
@@ -89,6 +99,7 @@ if st.session_state.get("authentication_status"):
             Assist_prod.upload_csv()
             Assist_prod.exportar_csv()
         case "✏️Editar itens":
+            Assist_prod.requer_role(["admin"])
             Assist_prod.edição_de_itens()
         case "📱leitura de codigo de barra":
             Assist_prod.qrCode()
