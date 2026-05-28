@@ -21,10 +21,15 @@ if 'repo' not in st.session_state:
 
 repo = st.session_state.repo
 
-
+FILIAIS = {
+    "sao_jose": "São José",
+    "jaragua": "Jaraguá do Sul",
+    "chapeco": "Chapecó",
+}
 # ---------------------------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------------------------
+
 
 def get_db():
     """RETORNA A FILIAL DO USER LOGADO"""
@@ -71,46 +76,10 @@ def tela_cadastro():
                 st.error(f"Erro: {e}")
 
 
-def tela_saidas(loged_User):
-    st.title("📤 Saida de Estoque")
-    db = get_db()
-    filial = st.session_state["filial"]
-
-    cod_input = st.number_input(
-        "Código do Produto", step=1, min_value=0, key="cod_saida")
-    cod_input = int(cod_input)
-    nome_produto = buscar_nome_produto(cod_input)
-    st.write("Produto selecionado:")
-    st.write(f"{nome_produto}")
-
-    qtd_input = st.number_input(
-        "Quantidade a tirar", min_value=1, key="qtd_saida")
-    value_input = st.number_input(
-        "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
-    user_input = loged_User
-
-    if st.button("Confirmar Saida"):
-        if user_input == "":
-            st.error("Coloque seu nome no registro")
-            st.stop()
-
-        with db.get_connection()as conn:
-            cursor = conn.execute("UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
-                                  (qtd_input, cod_input, qtd_input))
-            conn.commit()
-
-        if cursor.rowcount == 0:
-            st.error(f"❌ Estoque insuficiente para o produto {cod_input}!")
-            st.stop()
-
-        repo.registrar_Movimentacao(
-            filial, cod_input, 'Saida', qtd_input, value_input, user_input)
-
-        st.success("✅ Estoque atualizado!")
-
-
 def tela_dashboard():
-    st.title("📦 Estoque")
+    filial = st.session_state.get("filial", "")
+    filial_name = FILIAIS.get(filial, filial)
+    st.title(F"📦 Estoque de {filial_name}")
 
     db = get_db()
 
@@ -157,6 +126,44 @@ def exportar_csv():
     )
 
 
+def tela_saidas(loged_User):
+    st.title("📤 Saida de Estoque")
+    db = get_db()
+    filial = st.session_state["filial"]
+
+    cod_input = st.number_input(
+        "Código do Produto", step=1, min_value=0, key="cod_saida")
+    cod_input = int(cod_input)
+    nome_produto = buscar_nome_produto(cod_input)
+    st.write("Produto selecionado:")
+    st.write(f"{nome_produto}")
+
+    qtd_input = st.number_input(
+        "Quantidade a tirar", min_value=1, key="qtd_saida")
+    value_input = st.number_input(
+        "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
+    user_input = loged_User
+
+    if st.button("Confirmar Saida"):
+        if user_input == "":
+            st.error("Coloque seu nome no registro")
+            st.stop()
+
+        with db.get_connection()as conn:
+            cursor = conn.execute("UPDATE Produtos SET quantidade = quantidade - ? WHERE cod_prod = ? AND quantidade >= ?",
+                                  (qtd_input, cod_input, qtd_input))
+            conn.commit()
+
+        if cursor.rowcount == 0:
+            st.error(f"❌ Estoque insuficiente para o produto {cod_input}!")
+            st.stop()
+
+        repo.registrar_Movimentacao(
+            filial, cod_input, 'Saida', qtd_input, value_input, user_input)
+
+        st.success("✅ Estoque atualizado!")
+
+
 def entrada_Produtos(loged_User):
     st.title("📥 Entrada de Estoque")
     db = get_db()
@@ -190,6 +197,21 @@ def entrada_Produtos(loged_User):
 
 
 def tela_Movimentacoes():
+    def ShowTabela(DBtoShow):
+        st.dataframe(
+            DBtoShow.iloc[:, 1:],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "valor": st.column_config.NumberColumn("Preço (R$)", format="R$ %.2f"),
+                "quantidade": st.column_config.NumberColumn("Qtd"),
+                "cod_prod": "Código do Produto",
+                "nome": "Descrição do Produto",
+                "localizacao": "Local",
+                "User": "Usuario"
+            }
+        )
+
     db = get_db()
 
     df_saidas = db.read(
@@ -197,18 +219,11 @@ def tela_Movimentacoes():
     df_entradas = db.read(
         "SELECT * FROM Movimentacao WHERE tipo = 'Entrada'")
     st.title("📊 Relatórios de movimentações")
-    st.text("📤 Saida de produtos:")
-    st.dataframe(
-        df_saidas,
-        width="stretch",
-        column_config={"cod_prod": "Código", }
-    )
+
     st.text("Entradas", width="stretch")
-    st.dataframe(
-        df_entradas,
-        width="stretch",
-        column_config={"cod_prod": "Código", }
-    )
+    ShowTabela(df_entradas)
+    st.text("📤 Saida de produtos:")
+    ShowTabela(df_saidas)
 
 
 def upload_csv():

@@ -30,8 +30,10 @@ def requer_role(roles_permitidas: list):
 
 
 st.set_page_config(
-    page_title="ESTOQUE ASISTE SJ",
+    page_title="ASSISTENTE DE ESTOQUE",
     page_icon="📦",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # 2. Cria o autenticador
@@ -79,16 +81,17 @@ if st.session_state.get("authentication_status"):
 
         menu = sac.menu(
             items=[
+
                 sac.MenuItem('📦Estoque Geral'),
-                sac.MenuItem('📝Cadastrar Produto'),
                 sac.MenuItem(type='divider'),
                 sac.MenuItem('📥Registrar Entrada'),
                 sac.MenuItem('📤Registrar Saída'),
                 sac.MenuItem('🚚Movimentações'),
                 sac.MenuItem(type='divider'),
                 sac.MenuItem('✏️Editar itens'),
-                sac.MenuItem('📱leitura de codigo de barra'),
-                sac.MenuItem('Importar Dados')
+                sac.MenuItem('📝Cadastrar Produto'),
+                sac.MenuItem('💾Importar e exportar Dados')
+                # sac.MenuItem('📱leitura de codigo de barra'),
             ],
             key='menu_lateral_principal'
         )
@@ -99,19 +102,21 @@ if st.session_state.get("authentication_status"):
         case "🚚Movimentações":
             Assist_prod.tela_Movimentacoes()
         case "📝Cadastrar Produto":
+            requer_role(["admin"])
             Assist_prod.tela_cadastro()
         case "📤Registrar Saída":
             Assist_prod.tela_saidas(loged_User)
         case "📥Registrar Entrada":
             Assist_prod.entrada_Produtos(loged_User)
-        case "Importar Dados":
+        case "💾Importar e exportar Dados":
+            requer_role(["admin"])
             Assist_prod.upload_csv()
             Assist_prod.exportar_csv()
         case "✏️Editar itens":
             requer_role(["admin"])
             Assist_prod.edição_de_itens()
-        case "📱leitura de codigo de barra":
-            Assist_prod.qrCode()
+        # case "📱leitura de codigo de barra":
+        #     Assist_prod.qrCode()
 
 elif st.session_state.get("authentication_status") is False:
     st.error("❌ Usuário ou senha incorretos.")
