@@ -1,5 +1,20 @@
-#ignora qualquer arquivo .db na pasta do projeto
+# Banco de dados
 *.db
+
+# Configuração sensível
 config.yaml
-__pycache__/*
+
+# Cache Python
+__pycache__/
 *.pyc
+
+# Editor
+.vscode/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Scripts locais
+Run.ps1
