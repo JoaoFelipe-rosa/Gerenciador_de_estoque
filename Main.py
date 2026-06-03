@@ -29,6 +29,10 @@ def requer_role(roles_permitidas: list):
         st.stop()
 
 
+def is_admin():
+    return "admin" not in st.session_state.get("roles", [])
+
+
 st.set_page_config(
     page_title="ASSISTENTE DE ESTOQUE",
     page_icon="📦",
@@ -82,37 +86,43 @@ if st.session_state.get("authentication_status"):
         menu = sac.menu(
             items=[
 
-                sac.MenuItem('📦Estoque Geral'),
+                sac.MenuItem('Estoque Geral', icon="bi bi-box2"),
                 sac.MenuItem(type='divider'),
-                sac.MenuItem('📥Registrar Entrada'),
-                sac.MenuItem('📤Registrar Saída'),
-                sac.MenuItem('🚚Movimentações'),
+                sac.MenuItem('Registrar Entrada',
+                             icon="bi bi-box-arrow-in-down"),
+                sac.MenuItem('Registrar Saída', icon="bi bi-box-arrow-up"),
+                sac.MenuItem('Movimentações', icon="bi bi-truck"),
                 sac.MenuItem(type='divider'),
-                sac.MenuItem('✏️Editar itens'),
-                sac.MenuItem('📝Cadastrar Produto'),
-                sac.MenuItem('💾Importar e exportar Dados')
+                sac.MenuItem("Admin", disabled=is_admin(), icon="bi bi-tools", children=[
+                    sac.MenuItem('Editar itens', icon="bi bi-pencil-square"),
+                    sac.MenuItem('Cadastrar Produto',
+                                 icon="bi bi-clipboard-plus"),
+                    sac.MenuItem('Importar e exportar Dados',
+                                 icon="bi bi-floppy")
+                ])
+
                 # sac.MenuItem('📱leitura de codigo de barra'),
             ],
             key='menu_lateral_principal'
         )
 
     match menu:
-        case "📦Estoque Geral":
+        case "Estoque Geral":
             Assist_prod.tela_dashboard()
-        case "🚚Movimentações":
+        case "Movimentações":
             Assist_prod.tela_Movimentacoes()
-        case "📝Cadastrar Produto":
+        case "Cadastrar Produto":
             requer_role(["admin"])
             Assist_prod.tela_cadastro()
-        case "📤Registrar Saída":
+        case "Registrar Saída":
             Assist_prod.tela_saidas(loged_User)
-        case "📥Registrar Entrada":
+        case "Registrar Entrada":
             Assist_prod.entrada_Produtos(loged_User)
-        case "💾Importar e exportar Dados":
+        case "Importar e exportar Dados":
             requer_role(["admin"])
             Assist_prod.upload_csv()
             Assist_prod.exportar_csv()
-        case "✏️Editar itens":
+        case "Editar itens":
             requer_role(["admin"])
             Assist_prod.edição_de_itens()
         # case "📱leitura de codigo de barra":
