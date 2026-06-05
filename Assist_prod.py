@@ -276,7 +276,7 @@ def upload_csv():
                 st.warning("Importação cancelada.")
 
 
-def edição_de_itens():
+def edição_de_itens(isAdmin):
     st.subheader("✏️ Editar Produto")
     db = get_db()
 
@@ -331,4 +331,5 @@ def edição_de_itens():
                 "Movimentacao", "comentario", "TEXT")
 
     st.write("botão para add coluna")
-    st.button(label="Adicionar colunas", on_click=addcolunas, disabled=True)
+    st.button(label="Adicionar colunas",
+              on_click=addcolunas, disabled=not isAdmin)

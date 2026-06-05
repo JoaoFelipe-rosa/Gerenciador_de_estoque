@@ -82,7 +82,8 @@ if st.session_state.get("authentication_status"):
             sac.MenuItem('Movimentações', icon="bi bi-truck"),
         ]
 
-        if not is_admin():  # is_admin() retorna True para NÃO admin, então inverta
+        if not is_admin():
+            adminrole = True  # is_admin() retorna True para NÃO admin, então inverta
             itens_menu.append(sac.MenuItem(type='divider'))
             itens_menu.append(sac.MenuItem("Admin", icon="bi bi-tools", children=[
                 sac.MenuItem('Editar itens', icon="bi bi-pencil-square"),
@@ -112,7 +113,7 @@ if st.session_state.get("authentication_status"):
             Assist_prod.exportar_csv()
         case "Editar itens":
             requer_role(["admin"])
-            Assist_prod.edição_de_itens()
+            Assist_prod.edição_de_itens(is_admin)
 
 elif st.session_state.get("authentication_status") is False:
     st.error("❌ Usuário ou senha incorretos.")
