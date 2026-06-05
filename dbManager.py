@@ -25,6 +25,20 @@ class DataBaseManager:
             conn.execute(query, parms)
             conn.commit()
 
+    def add_column(self, tabela, coluna, tipo, default=""):
+        """Adiciona coluna se não existir"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo} DEFAULT '{default}'")
+                conn.commit()
+            print(f"Coluna '{coluna}' adicionada em '{tabela}'")
+        except Exception as e:
+            if "duplicate column name" in str(e):
+                print(f"Coluna '{coluna}' já existe, ignorando.")
+            else:
+                raise e
+
     def import_csv(self, tabela, arquivo_csv, encoding, if_exists="append"):
         df = pd.read_csv(arquivo_csv, sep=";", encoding=encoding)
         df = df.loc[:, ~df.columns.str.contains(r"^Unnamed")]
@@ -93,13 +107,13 @@ class InventorySystem:
             )
         ''')
 
-    def registrar_Movimentacao(self, filial, cod_prod, tipo, qtd, valor, user):
+    def registrar_Movimentacao(self, filial, cod_prod, tipo, qtd, valor, user, comentario):
         query = """
-            INSERT INTO Movimentacao (cod_prod, tipo, quantidade, valor, User, data)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO Movimentacao (cod_prod, tipo, quantidade, valor, User, data, comentario)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         params = (cod_prod, tipo, qtd, valor, user,
-                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"), comentario)
         try:
             self.get_db(filial).write(query, params)
         except Exception as e:

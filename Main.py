@@ -11,14 +11,6 @@ with open("config.yaml", encoding="utf-8") as f:
     config = yaml.load(f, Loader=SafeLoader)
 
 
-def sessionLogout(*args, **kwargs):
-    st.session_state["authentication_status"] = None
-    st.session_state["username"] = None
-    st.session_state["name"] = None
-    st.session_state["filial"] = None
-    st.rerun()
-
-
 def requer_role(roles_permitidas: list):
     """Bloqueia acesso se o usuário não tiver a role necessária"""
     roles_usuario = config["credentials"]["usernames"][st.session_state["username"]].get(
@@ -51,7 +43,7 @@ authenticator = stauth.Authenticate(
 
 # 3. Renderiza o formulário de login, com maximo de tentativas
 try:
-    authenticator.login(max_login_attempts=3, single_session=False)
+    authenticator.login(max_login_attempts=3, single_session=False,)
 except Exception as e:
     if "Maximum number of login attempts exceeded" in str(e):
         st.error(
@@ -64,8 +56,7 @@ except Exception as e:
 
 # 4. Controla o acesso e mostra os menus
 if st.session_state.get("authentication_status"):
-    authenticator.logout("Sair", "sidebar", key="side_bar",
-                         callback=sessionLogout)
+    authenticator.logout("Sair", "sidebar", key="side_bar")
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
 
     loged_User = st.session_state['name']
@@ -83,28 +74,25 @@ if st.session_state.get("authentication_status"):
     with st.sidebar:
         st.title("Navegação")
 
-        menu = sac.menu(
-            items=[
+        itens_menu: list = [
+            sac.MenuItem('Estoque Geral', icon="bi bi-box2"),
+            sac.MenuItem(type='divider'),
+            sac.MenuItem('Registrar Entrada', icon="bi bi-box-arrow-in-down"),
+            sac.MenuItem('Registrar Saída', icon="bi bi-box-arrow-up"),
+            sac.MenuItem('Movimentações', icon="bi bi-truck"),
+        ]
 
-                sac.MenuItem('Estoque Geral', icon="bi bi-box2"),
-                sac.MenuItem(type='divider'),
-                sac.MenuItem('Registrar Entrada',
-                             icon="bi bi-box-arrow-in-down"),
-                sac.MenuItem('Registrar Saída', icon="bi bi-box-arrow-up"),
-                sac.MenuItem('Movimentações', icon="bi bi-truck"),
-                sac.MenuItem(type='divider'),
-                sac.MenuItem("Admin", disabled=is_admin(), icon="bi bi-tools", children=[
-                    sac.MenuItem('Editar itens', icon="bi bi-pencil-square"),
-                    sac.MenuItem('Cadastrar Produto',
-                                 icon="bi bi-clipboard-plus"),
-                    sac.MenuItem('Importar e exportar Dados',
-                                 icon="bi bi-floppy")
-                ])
+        if not is_admin():  # is_admin() retorna True para NÃO admin, então inverta
+            itens_menu.append(sac.MenuItem(type='divider'))
+            itens_menu.append(sac.MenuItem("Admin", icon="bi bi-tools", children=[
+                sac.MenuItem('Editar itens', icon="bi bi-pencil-square"),
+                sac.MenuItem('Cadastrar Produto',
+                             icon="bi bi-clipboard-plus"),
+                sac.MenuItem('Importar e exportar Dados',
+                             icon="bi bi-floppy")
+            ]))
 
-                # sac.MenuItem('📱leitura de codigo de barra'),
-            ],
-            key='menu_lateral_principal'
-        )
+        menu = sac.menu(items=itens_menu, key='menu_lateral_principal')
 
     match menu:
         case "Estoque Geral":
@@ -125,8 +113,6 @@ if st.session_state.get("authentication_status"):
         case "Editar itens":
             requer_role(["admin"])
             Assist_prod.edição_de_itens()
-        # case "📱leitura de codigo de barra":
-        #     Assist_prod.qrCode()
 
 elif st.session_state.get("authentication_status") is False:
     st.error("❌ Usuário ou senha incorretos.")

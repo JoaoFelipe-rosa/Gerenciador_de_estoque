@@ -142,10 +142,11 @@ def tela_saidas(loged_User):
         "Quantidade a tirar", min_value=1, key="qtd_saida")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
+    comment_input = st.text_area("Comentario:", key="comment")
     user_input = loged_User
 
     if st.button("Confirmar Saida"):
-        if user_input == "":
+        if not user_input.strip():
             st.error("Coloque seu nome no registro")
             st.stop()
 
@@ -159,7 +160,7 @@ def tela_saidas(loged_User):
             st.stop()
 
         repo.registrar_Movimentacao(
-            filial, cod_input, 'Saida', qtd_input, value_input, user_input)
+            filial, cod_input, 'Saida', qtd_input, value_input, user_input, comment_input)
 
         st.success("✅ Estoque atualizado!")
 
@@ -180,15 +181,16 @@ def entrada_Produtos(loged_User):
         "Quantidade a Adicionar", min_value=1, key="qtd_entrada")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_entrada")
+    comment_input = st.text_area("Comentario:", key="comment")
     user_input = loged_User
 
     if st.button("Confirmar Entrada"):
-        if user_input == "":
+        if not user_input.strip():
             st.error("Coloque seu nome no registro")
             st.stop()
 
         repo.registrar_Movimentacao(
-            filial, cod_input, 'Entrada', qtd_input, value_input, user_input)
+            filial, cod_input, 'Entrada', qtd_input, value_input, user_input, comment_input)
         db.write(
             "UPDATE Produtos SET quantidade = quantidade + ?, valor = ? WHERE cod_prod = ?",
             (qtd_input, value_input, cod_input)
@@ -204,11 +206,14 @@ def tela_Movimentacoes():
             hide_index=True,
             column_config={
                 "valor": st.column_config.NumberColumn("Preço (R$)", format="R$ %.2f"),
-                "quantidade": st.column_config.NumberColumn("Qtd"),
+                "quantidade": st.column_config.NumberColumn("Quantidade"),
                 "cod_prod": "Código do Produto",
+                "tipo": "Movimentação",
                 "nome": "Descrição do Produto",
                 "localizacao": "Local",
-                "User": "Usuario"
+                "User": "Usuario",
+                "data": "Data da movimentação",
+                "comentario": "Comentario"
             }
         )
 
@@ -320,71 +325,10 @@ def edição_de_itens():
                     except Exception as e:
                         st.error(f"Erro ao atualizar: {e}")
 
+    def addcolunas():
+        for filial in ["sao_jose", "jaragua", "chapeco"]:
+            repo.get_db(filial).add_column(
+                "Movimentacao", "comentario", "TEXT")
 
-def qrCode():
-    if "codigo_detectado" not in st.session_state:
-        st.session_state.codigo_detectado = None
-
-    st.title("📷 Leitor de QR Code / Barcode")
-
-    # --- ESTADO 2: Código já encontrado ---
-    if st.session_state.codigo_detectado is not None:
-        resultado = st.session_state.codigo_detectado
-        st.success("✅ Código detectado com sucesso!")
-        st.markdown(f"**Tipo:** {resultado['tipo']}")
-        st.markdown(f"**Dados:** `{resultado['dados']}`")
-
-        if st.button("🔄 Nova leitura"):
-            st.session_state.codigo_detectado = None
-            st.rerun()
-        return
-
-    # --- ESTADO 1: Leitura ativa ---
-    st.info("🎥 Câmera ativa — aponte para um QR Code ou código de barras.")
-
-    if "resultado_buffer" not in st.session_state:
-        st.session_state.resultado_buffer = queue.Queue(maxsize=1)
-
-    resultado_queue = st.session_state.resultado_buffer
-
-    def processar_frame(frame):
-        img = frame.to_ndarray(format="bgr24")
-        codigos = pyzbar.decode(img)
-
-        if codigos:
-            codigo = codigos[0]
-            (x, y, w, h) = codigo.rect
-            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            try:
-                resultado_queue.put_nowait({
-                    "dados": codigo.data.decode("utf-8"),
-                    "tipo": codigo.type
-                })
-            except queue.Full:
-                pass
-
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-    ctx = webrtc_streamer(
-        key="leitor",
-        mode=WebRtcMode.SENDRECV,
-        video_frame_callback=processar_frame,
-        media_stream_constraints={"video": True, "audio": False},
-        desired_playing_state=True,
-    )
-
-    # Polling externo ao ctx — roda a cada rerun do Streamlit
-    if not resultado_queue.empty():
-        try:
-            resultado = resultado_queue.get_nowait()
-            st.session_state.codigo_detectado = resultado
-            st.session_state.resultado_buffer = queue.Queue(
-                maxsize=1)  # reseta a fila
-            st.rerun()
-        except queue.Empty:
-            pass
-
-    # Força o Streamlit a re-executar enquanto câmera ativa
-    if ctx.state.playing:
-        time.sleep(0.3)
-        st.rerun()
+    st.write("botão para add coluna")
+    st.button(label="Adicionar colunas", on_click=addcolunas, disabled=True)
