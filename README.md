@@ -40,9 +40,9 @@ Gerenciador_de_estoque/
 ├── .gitignore               # Arquivos ignorados no Git
 ├── auto_pull.sh             # Script de monitoramento e auto-deploy
 └── DB/                      # Bancos de dados SQLite (não versionar)
-    ├── Estoque_sao_jose.db
-    ├── Estoque_Jaragua.db
-    └── Estoque_chapeco.db
+    ├── Estoque1.db
+    ├── Estoque2.db
+    └── Estoque3.db
 ```
 
 ---
