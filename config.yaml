@@ -1,5 +1,5 @@
 cookie:
-  expiry_days: 1.125
+  expiry_days: 30
   key: chave_secreta_aleatoria
   name: meu_app_cookie
 credentials:
@@ -23,21 +23,12 @@ credentials:
     larilson:
       email: adriano@email.com
       failed_login_attempts: 0
-      logged_in: true
+      logged_in: false
       name: Larilson
       password: $2b$12$854kirsdlrc1DNTdGEgNwudRSjbkTygvLYmonn7Jkm5o8pKASe3US
-      roles:
-      - viewer
-    teste:
-      email: teste@email.com
-      failed_login_attempts: 0
-      logged_in: true
-      name: teste
-      password: $2b$12$n.BvMVYBodzwOu051bzSEu6cSotV2gdjrY.9ZopSiKKbN6yrpqTJG
       roles:
       - viewer
 filiais:
   adriano: sao_jose
   joao: sao_jose
   larilson: sao_jose
-  teste: sao_jose

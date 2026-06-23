@@ -1,5 +1,0 @@
-[server]
-address = "0.0.0.0"  # Permite que outros dispositivos acessem o servidor
-port = 8501
-sslCertFile = "cert.pem"
-sslKeyFile = "key.pem"

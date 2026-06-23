@@ -5,9 +5,8 @@ from yaml.loader import SafeLoader
 import streamlit_antd_components as sac
 import Assist_prod
 
-# ============================================================================================================
-# 1. PUXA A CONFIGURAÇÃO DO YAML
-# ============================================================================================================
+
+# 1. Carrega o config
 with open("config.yaml", encoding="utf-8") as f:
     config = yaml.load(f, Loader=SafeLoader)
 
@@ -32,9 +31,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-# ============================================================================================================
+
 # 2. Cria o autenticador
-# ============================================================================================================
 authenticator = stauth.Authenticate(
     config["credentials"],
     config["cookie"]["name"],
@@ -42,9 +40,8 @@ authenticator = stauth.Authenticate(
     config["cookie"]["expiry_days"],
 
 )
-# ============================================================================================================
-# 3. Renderiza o formulário de login, com maximo de 3 tentativas
-# ============================================================================================================
+
+# 3. Renderiza o formulário de login, com maximo de tentativas
 try:
     authenticator.login(max_login_attempts=3, single_session=False,)
 except Exception as e:
@@ -56,9 +53,8 @@ except Exception as e:
         st.error(f"Erro no login: {e}")
         st.stop()
 
-# ============================================================================================================
-# 4. Controla o acesso e mostra os menus diferenciando usuarios de admins
-# ============================================================================================================
+
+# 4. Controla o acesso e mostra os menus
 if st.session_state.get("authentication_status"):
     authenticator.logout("Sair", "sidebar", key="side_bar")
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
@@ -74,29 +70,27 @@ if st.session_state.get("authentication_status"):
 
     if "filial" not in st.session_state:
         st.session_state["filial"] = filial
-# ==================================================================================================================================================================
- # MENU LATERAL
-# ==================================================================================================================================================================
+
     with st.sidebar:
         st.title("Navegação")
 
         itens_menu: list = [
             sac.MenuItem('Estoque Geral', icon="bi bi-box2"),
             sac.MenuItem(type='divider'),
+            sac.MenuItem('Registrar Entrada', icon="bi bi-box-arrow-in-down"),
+            sac.MenuItem('Registrar Saída', icon="bi bi-box-arrow-up"),
             sac.MenuItem('Movimentações', icon="bi bi-truck"),
-            sac.MenuItem('Pedidos', icon="bi bi-cart"),
         ]
 
         if not is_admin():
-            adminrole = True
+            adminrole = True  # is_admin() retorna True para NÃO admin, então inverta
             itens_menu.append(sac.MenuItem(type='divider'))
             itens_menu.append(sac.MenuItem("Admin", icon="bi bi-tools", children=[
                 sac.MenuItem('Editar itens', icon="bi bi-pencil-square"),
                 sac.MenuItem('Cadastrar Produto',
                              icon="bi bi-clipboard-plus"),
                 sac.MenuItem('Importar e exportar Dados',
-                             icon="bi bi-floppy"),
-                sac.MenuItem('Leitor', icon="bi bi-upc-scan")
+                             icon="bi bi-floppy")
             ]))
 
         menu = sac.menu(items=itens_menu, key='menu_lateral_principal')
@@ -105,12 +99,14 @@ if st.session_state.get("authentication_status"):
         case "Estoque Geral":
             Assist_prod.tela_dashboard()
         case "Movimentações":
-            Assist_prod.tela_Movimentacoes(loged_User)
+            Assist_prod.tela_Movimentacoes()
         case "Cadastrar Produto":
             requer_role(["admin"])
             Assist_prod.tela_cadastro()
-        case "Pedidos":
-            Assist_prod.tela_pedidos()
+        case "Registrar Saída":
+            Assist_prod.tela_saidas(loged_User)
+        case "Registrar Entrada":
+            Assist_prod.entrada_Produtos(loged_User)
         case "Importar e exportar Dados":
             requer_role(["admin"])
             Assist_prod.upload_csv()
@@ -118,9 +114,6 @@ if st.session_state.get("authentication_status"):
         case "Editar itens":
             requer_role(["admin"])
             Assist_prod.edição_de_itens(is_admin)
-        case "Leitor":
-            Assist_prod.QR_Reader()
-
 
 elif st.session_state.get("authentication_status") is False:
     st.error("❌ Usuário ou senha incorretos.")
