@@ -106,6 +106,28 @@ class InventorySystem:
                 data TEXT NOT NULL
             )
         ''')
+        db.write('''
+           CREATE TABLE IF NOT EXISTS Lista_Pedido (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               cod_prod INTEGER NOT NULL,
+               nome TEXT NOT NULL,
+               quantidade INTEGER NOT NULL,
+               valor REAL DEFAULT 0,
+               adicionado_por TEXT NOT NULL,
+               data TEXT NOT NULL
+           )
+        ''')
+        db.write('''
+                 CREATE TABLE IF NOT EXISTS Pedidos(
+                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                     numero_pedido TEXT UNIQUE NOT NULL,
+                     itens TEXT NOT NULL,
+                     total REAL DEFAULT 0,
+                     criado_por TEXT NOT NULL,
+                     data_criacao TEXT NOT NULL,
+                     status TEXT DEFAULT 'Enviado'
+                 )
+                ''')
 
     def registrar_Movimentacao(self, filial, cod_prod, tipo, qtd, valor, user, comentario):
         query = """
