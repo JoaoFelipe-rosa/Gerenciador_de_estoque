@@ -1,11 +1,17 @@
 import json
+
+import numpy as np
 import streamlit as st
+import streamlit_antd_components as sac
 import pandas as pd
 from datetime import datetime
 from dbManager import InventorySystem
+import cv2
+from pyzbar import pyzbar
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+import av
 import time
-from streamlit_qrcode_scanner import qrcode_scanner
-
+import queue
 
 # ---------------------------------------------------------------------------
 # BANCO DE DADOS
@@ -106,39 +112,18 @@ def tela_dashboard():
 
 def exportar_csv():
     db = get_db()
-    tabelas_map = {
-        "Produtos": "produtos",
-        "Movimentação": "movimentacao"
-    }
+    options = ["Produtos", "Movimentacao"]
 
-    selecionado_label = st.selectbox(
-        label="Dados a ser baixado:", options=list(tabelas_map.keys()))
-    tabela_nome = tabelas_map[selecionado_label]
+    selecionado = st.selectbox(label="Dados a ser baixado:", options=options)
 
-    if st.button("Preparar arquivo para download"):
-        try:
-            with db.get_connection() as conn:
-                cursor = conn.execute(f"PRAGMA table_info({tabela_nome})")
-                colunas = [row[1]
-                           for row in cursor.fetchall() if row[1].lower() != "id"]
-
-            colunas_str = ", ".join(colunas)
-
-            df = db.read(f"SELECT {colunas_str} FROM {tabela_nome}")
-
-            csv = df.to_csv(index=False, sep=";",
-                            decimal=",", encoding="latin-1")
-
-            st.download_button(
-                label=f"📥 Baixar {selecionado_label}",
-                data=csv.encode("latin-1"),
-                file_name=f"{tabela_nome}_{st.session_state.get('filial', 'geral')}_{datetime.now().strftime('%d-%m-%Y')}.csv",
-                mime="text/csv"
-            )
-            st.success("Dados preparados com sucesso!")
-
-        except Exception as e:
-            st.error(f"Erro ao gerar o CSV: {e}")
+    df = db.read(f"SELECT * FROM {selecionado}")
+    csv = df.to_csv(index=False, sep=";", decimal=",", encoding="latin-1")
+    st.download_button(
+        label="📥 Exportar dados dos produtos",
+        data=csv.encode("latin-1"),
+        file_name=f"{selecionado}_{st.session_state.get('filial', 'geral')}_{datetime.now().strftime('%d-%m-%Y')}.csv",
+        mime="text/csv"
+    )
 
 
 def tela_saidas(loged_User):
@@ -157,7 +142,7 @@ def tela_saidas(loged_User):
         "Quantidade a tirar", min_value=1, key="qtd_saida")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_saida")
-    comment_input = st.text_area("Comentario:", key="Out_comment")
+    comment_input = st.text_area("Comentario:", key="comment")
     user_input = loged_User
 
     if st.button("Confirmar Saida"):
@@ -196,7 +181,7 @@ def entrada_Produtos(loged_User):
         "Quantidade a Adicionar", min_value=1, key="qtd_entrada")
     value_input = st.number_input(
         "Valor Unitário (R$)", min_value=0.0, step=0.01, key="val_entrada")
-    comment_input = st.text_area("Comentario:", key="in_comment")
+    comment_input = st.text_area("Comentario:", key="comment")
     user_input = loged_User
 
     if st.button("Confirmar Entrada"):
@@ -213,43 +198,37 @@ def entrada_Produtos(loged_User):
         st.success("Estoque atualizado!")
 
 
-def tela_Movimentacoes(loged_User):
-    st.title("Movimentações")
+def tela_Movimentacoes():
+    def ShowTabela(DBtoShow):
+        st.dataframe(
+            DBtoShow.iloc[:, 1:],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "valor": st.column_config.NumberColumn("Preço (R$)", format="R$ %.2f"),
+                "quantidade": st.column_config.NumberColumn("Quantidade"),
+                "cod_prod": "Código do Produto",
+                "tipo": "Movimentação",
+                "nome": "Descrição do Produto",
+                "localizacao": "Local",
+                "User": "Usuario",
+                "data": "Data da movimentação",
+                "comentario": "Comentario"
+            }
+        )
 
-    tab1, tab2, tab3 = st.tabs(
-        ["📝 Histórico de Movimentações", "📦 Entradas", "📦 Saidas"])
-    with tab1:
-        def ShowTabela(DBtoShow):
-            st.dataframe(
-                DBtoShow.iloc[:, 1:],
-                width="stretch",
-                hide_index=True,
-                column_config={
-                    "valor": st.column_config.NumberColumn("Preço (R$)", format="R$ %.2f"),
-                    "quantidade": st.column_config.NumberColumn("Quantidade"),
-                    "cod_prod": "Código do Produto",
-                    "tipo": "Movimentação",
-                    "nome": "Descrição do Produto",
-                    "localizacao": "Local",
-                    "User": "Usuario",
-                    "data": "Data da movimentação",
-                    "comentario": "Comentario"
-                }
-            )
-        db = get_db()
-        df_saidas = db.read(
-            "SELECT * FROM Movimentacao WHERE tipo = 'Saida'")
-        df_entradas = db.read(
-            "SELECT * FROM Movimentacao WHERE tipo = 'Entrada'")
-        st.title("📊 Relatórios de movimentações")
-        st.text("Entradas", width="stretch")
-        ShowTabela(df_entradas)
-        st.text("📤 Saida de produtos:")
-        ShowTabela(df_saidas)
-    with tab2:
-        tela_saidas(loged_User)
-    with tab3:
-        entrada_Produtos(loged_User)
+    db = get_db()
+
+    df_saidas = db.read(
+        "SELECT * FROM Movimentacao WHERE tipo = 'Saida'")
+    df_entradas = db.read(
+        "SELECT * FROM Movimentacao WHERE tipo = 'Entrada'")
+    st.title("📊 Relatórios de movimentações")
+
+    st.text("Entradas", width="stretch")
+    ShowTabela(df_entradas)
+    st.text("📤 Saida de produtos:")
+    ShowTabela(df_saidas)
 
 
 def upload_csv():
@@ -354,196 +333,3 @@ def edição_de_itens(isAdmin):
     st.write("botão para add coluna")
     st.button(label="Adicionar colunas",
               on_click=addcolunas, disabled=not isAdmin)
-
-
-def tela_pedidos():
-    db = get_db()
-    st.title("📋 Pedidos")
-
-    tab1, tab2 = st.tabs(["📝 Lista da Semana", "📦 Pedidos Enviados"])
-
-    with tab1:
-        st.subheader("📝 Lista de Itens")
-
-        # Busca fora do form
-        busca = st.text_input(
-            "🔍 Digite o código ou nome do produto", placeholder="Ex: 1010411")
-
-        if busca:
-            df_produtos = db.read(
-                "SELECT cod_prod, nome, valor FROM Produtos WHERE CAST(cod_prod AS TEXT) LIKE :busca OR nome LIKE :busca ORDER BY nome LIMIT 10",
-                {"busca": f"%{busca}%"}
-            )
-            opcoes = {f"{r['cod_prod']} — {r['nome']}": r for _,
-                      r in df_produtos.iterrows()}
-        else:
-            opcoes = {}
-
-        # Selectbox fora do form
-        if opcoes:
-            produto_sel = st.selectbox("Produto", options=list(opcoes.keys()))
-            produto_dados = opcoes[produto_sel]
-        else:
-            if busca:
-                st.warning("Nenhum produto encontrado.")
-            produto_dados = None
-
-        # Form só com quantidade, valor e botão
-        with st.form("adicionar_item"):
-            col1, col2 = st.columns(2)
-            qtd = col1.number_input("Quantidade", min_value=1, value=1)
-            valor = col2.number_input(
-                "Valor",
-                value=float(produto_dados["valor"]
-                            ) if produto_dados is not None else 0.0,
-                step=0.01,
-                format="%.2f"
-            )
-
-            if st.form_submit_button("➕ Adicionar à Lista"):
-                if produto_dados is None:
-                    st.error("Selecione um produto antes de adicionar.")
-                else:
-                    # Verifica se já existe na lista
-                    existente = db.read(
-                        "SELECT id, quantidade FROM Lista_Pedido WHERE cod_prod = :cod",
-                        {"cod": int(produto_dados["cod_prod"])}
-                    )
-
-                    if not existente.empty:
-                        # Atualiza a quantidade do item existente
-                        nova_qtd = int(existente.iloc[0]["quantidade"]) + qtd
-                        db.write(
-                            "UPDATE Lista_Pedido SET quantidade = :qtd WHERE id = :id",
-                            {"qtd": nova_qtd, "id": int(
-                                existente.iloc[0]["id"])}
-                        )
-
-                    else:
-                        # Insere novo item
-                        db.write(
-                            "INSERT INTO Lista_Pedido (cod_prod, nome, quantidade, valor, adicionado_por, data) VALUES (:cod, :nome, :qtd, :valor, :user, :data)",
-                            {
-                                "cod": int(produto_dados["cod_prod"]),
-                                "nome": produto_dados["nome"],
-                                "qtd": qtd,
-                                "valor": valor,
-                                "user": st.session_state["name"],
-                                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            }
-                        )
-
-                    st.rerun()
-
-        # Lista acumulada
-        df_lista = db.read("SELECT * FROM Lista_Pedido ORDER BY data DESC")
-
-        if df_lista.empty:
-            st.info("Lista vazia. Adicione produtos acima.")
-        else:
-            st.dataframe(df_lista.drop(
-                columns=["id"]), hide_index=True, use_container_width=True)
-
-            total = (df_lista["quantidade"] * df_lista["valor"]).sum()
-            st.metric("Total da Lista", f"R$ {total:,.2f}")
-
-            st.divider()
-
-            item_remover = st.selectbox(
-                "Remover item:",
-                options=df_lista["id"].tolist(),
-                format_func=lambda x: df_lista[df_lista["id"]
-                                               == x]["nome"].values[0]
-            )
-            if st.button("🗑️ Remover item"):
-                db.write("DELETE FROM Lista_Pedido WHERE id = :id",
-                         {"id": item_remover})
-                st.rerun()
-
-            st.divider()
-
-            st.subheader("📤 Enviar Pedido")
-            with st.form("enviar_pedido"):
-                numero_pedido = st.text_input(
-                    "Número do Pedido", placeholder="Ex: PED-2026-001")
-
-                if st.form_submit_button("✅ Confirmar Envio"):
-                    if not numero_pedido:
-                        st.error("Informe o número do pedido.")
-                    else:
-                        itens = df_lista.drop(
-                            columns=["id"]).to_dict(orient="records")
-                        itens_json = json.dumps(itens, ensure_ascii=False)
-                        total = (df_lista["quantidade"] *
-                                 df_lista["valor"]).sum()
-
-                        try:
-                            db.write(
-                                "INSERT INTO Pedidos (numero_pedido, itens, total, criado_por, data_criacao) VALUES (:num, :itens, :total, :user, :data)",
-                                {
-                                    "num": numero_pedido,
-                                    "itens": itens_json,
-                                    "total": total,
-                                    "user": st.session_state["name"],
-                                    "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                }
-                            )
-                            db.write("DELETE FROM Lista_Pedido")
-                            st.success(f"✅ Pedido {numero_pedido} enviado!")
-                            st.rerun()
-                        except Exception as e:
-                            if "UNIQUE constraint failed" in str(e):
-                                st.error(
-                                    f"❌ Número '{numero_pedido}' já existe.")
-                            else:
-                                st.error(f"Erro: {e}")
-
-    with tab2:
-        st.subheader("📦 Pedidos Enviados")
-
-        df_pedidos = db.read(
-            "SELECT * FROM Pedidos ORDER BY data_criacao DESC")
-
-        if df_pedidos.empty:
-            st.info("Nenhum pedido enviado.")
-            return
-
-        for _, pedido in df_pedidos.iterrows():
-            with st.expander(f"📦 {pedido['numero_pedido']} — {pedido['data_criacao']} — por {pedido['criado_por']}"):
-                # Deserializa os itens do JSON
-                itens = json.loads(pedido["itens"])
-                df_itens = pd.DataFrame(itens)
-                st.dataframe(df_itens, hide_index=True,
-                             width='stretch')
-                st.metric("Total", f"R$ {pedido['total']:,.2f}")
-
-
-def QR_Reader():
-    @st.dialog("📷 Leitor de QR Code / Código de Barras")
-    def barcode_Reader():
-        st.info("🎥 Aponte para um QR Code ou código de barras.")
-        codigo_lido = qrcode_scanner(key="qrcode_scanner")
-
-        if codigo_lido:
-            st.session_state.resultado_qr = codigo_lido
-            st.rerun()
-
-        if st.button("❌ Fechar"):
-            st.rerun()
-
-    if st.button("📷 Abrir Câmera"):
-        barcode_Reader()
-
-    if st.session_state.get("resultado_qr"):
-        st.success("✅ Código lido com sucesso!")
-        st.code(st.session_state.resultado_qr)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Nova Leitura"):
-                st.session_state.resultado_qr = None
-                barcode_Reader()
-        with col2:
-            if st.button("🗑️ Limpar"):
-                st.session_state.resultado_qr = None
-                st.rerun()
