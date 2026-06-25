@@ -8,3 +8,4 @@ opencv-python-headless
 pyzbar
 streamlit-webrtc
 av
+streamlit_qrcode_scanner
