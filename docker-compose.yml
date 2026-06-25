@@ -1,9 +1,10 @@
 services:
   estoque:
     build: .
+    container_name: ${CONTAINER_NAME}
     ports:
-      - "8501:8501"
+      - "${PORT}:8501"
     volumes:
-      - /home/joao/dados/DB:/DB
-      - /home/joao/dados/config.yaml:/app/config.yaml
+      - ${DATA_DIR}/DB:/DB
+      - ${DATA_DIR}/config.yaml:/config.yaml
     restart: unless-stopped
