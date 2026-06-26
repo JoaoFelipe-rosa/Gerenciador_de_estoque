@@ -1,10 +1,10 @@
 services:
   estoque:
     build: .
-    command: streamlit run Main.py --server.port=8502 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
+    command: streamlit run Main.py --server.port=8501 --server.address=0.0.0.0
     container_name: ${CONTAINER_NAME}
     ports:
-      - "${PORT}:8502"
+      - "${PORT}:8501"
     volumes:
       - ${DATA_DIR}/DB:/DB
       - ${DATA_DIR}/config.yaml:/config.yaml
