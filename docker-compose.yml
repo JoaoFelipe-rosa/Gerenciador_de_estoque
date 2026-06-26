@@ -1,7 +1,7 @@
 services:
   estoque:
     build: .
-    command: streamlit run Main.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run Main.py --server.port=8502 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
     container_name: ${CONTAINER_NAME}
     ports:
       - "${PORT}:8502"
