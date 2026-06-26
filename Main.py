@@ -61,6 +61,7 @@ except Exception as e:
 # ============================================================================================================
 if st.session_state.get("authentication_status"):
     authenticator.logout("Sair", "sidebar", key="side_bar")
+    st.title(f"**VOCE ESTA NO AMBIENTE DE DESENVOLVIMENTO**",)
     st.write(f"Bem-vindo, **{st.session_state['name']}**!")
 
     loged_User = st.session_state['name']
@@ -78,6 +79,7 @@ if st.session_state.get("authentication_status"):
  # MENU LATERAL
 # ==================================================================================================================================================================
     with st.sidebar:
+        st.title("**ENV DEV**")
         st.title("Navegação")
 
         itens_menu: list = [
