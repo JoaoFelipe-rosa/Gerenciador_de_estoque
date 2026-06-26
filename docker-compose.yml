@@ -1,6 +1,7 @@
 services:
   estoque:
     build: .
+    command: streamlit run Main.py --server.port=8501 --server.address=0.0.0.0
     container_name: ${CONTAINER_NAME}
     ports:
       - "${PORT}:8501"
